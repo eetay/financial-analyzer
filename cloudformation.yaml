@@ -1,0 +1,92 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "An example template with an IAM role for a Lambda state machine."
+
+#
+# CloudFormation resources
+#
+Resources:
+  #
+  # Role that our Lambda will assume to provide access to other AWS resources
+  #
+  TaseGetInfoLambdaExecutionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: "sts:AssumeRole"
+      Path: '/'
+
+  #
+  # Create a Policy and attach it to our Lambda Role.
+  #
+  IamPolicyLambdaExecution:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: IamPolicyLambdaExecution
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - xray:PutTraceSegments
+          Resource: '*'
+      Roles:
+        - Ref: TaseGetInfoLambdaExecutionRole
+
+  TaseGetInfoLambda: 
+    Type: "AWS::Lambda::Function"
+    Properties: 
+      FunctionName: "TaseGetInfoLambda"
+      Handler: "index.handler"
+      Role: 
+        Fn::GetAtt: 
+          - "TaseGetInfoLambdaExecutionRole"
+          - "Arn"
+      Code: 
+        ZipFile: |
+          exports.handler = (event, context, callback) => {
+              callback(null, "Hello World!");
+          };
+      Runtime: "nodejs8.10"
+      Timeout: 25
+      TracingConfig:
+        Mode: "Active"
+      Environment:
+        Variables:
+          DB: !Ref IamPolicyLambdaExecution
+  
+  ScheduledRule: 
+    Type: AWS::Events::Rule
+    Properties: 
+      Description: "ScheduledRule"
+      ScheduleExpression: "rate(1 day)"
+      State: "ENABLED"
+      Targets: 
+        - 
+          Arn: 
+            Fn::GetAtt: 
+              - "TaseGetInfoLambda"
+              - "Arn"
+          Id: "TargetFunctionV1"
+
+  PermissionForEventsToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: 
+        Ref: "TaseGetInfoLambda"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          - "ScheduledRule"
+          - "Arn"
+
+
+
