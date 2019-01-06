@@ -70,7 +70,7 @@ Resources:
     Type: AWS::Events::Rule
     Properties: 
       Description: "ScheduledRule"
-      ScheduleExpression: "rate(1 day)"
+      ScheduleExpression: "cron(0 19 * * ? *)"
       State: "ENABLED"
       Targets: 
         - 
