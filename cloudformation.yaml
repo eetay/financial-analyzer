@@ -37,6 +37,10 @@ Resources:
             - logs:PutLogEvents
             - xray:PutTraceSegments
           Resource: '*'
+        - Effect: Allow
+          Action:
+            - dynamodb:PutItem",
+          Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Stocks'
       Roles:
         - Ref: TaseGetInfoLambdaExecutionRole
 
@@ -60,7 +64,7 @@ Resources:
         Mode: "Active"
       Environment:
         Variables:
-          DB: !Ref IamPolicyLambdaExecution
+          STOCKS_TABLE: Stocks
   
   ScheduledRule: 
     Type: AWS::Events::Rule
