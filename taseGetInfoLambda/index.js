@@ -144,7 +144,7 @@ exports.handler = async (event) => {
 		hebrew: '{26F9CCE6-D184-43C6-BAB9-CF7848987BFF}'
 	}
 	let result = await request({
-		path: '/_layouts/Tase/ManagementPages/Export.aspx?sn=none&GridId=33&AddCol=1&Lang=en-US&CurGuid=${lang['english']}&action=1&dualTab=&SubAction=0&date=&ExportType=3'
+		path: `/_layouts/Tase/ManagementPages/Export.aspx?sn=none&GridId=33&AddCol=1&Lang=en-US&CurGuid=${lang['english']}&action=1&dualTab=&SubAction=0&date=&ExportType=3`
 	}).then(({data, headers})=>{
 		let cookies = headers['set-cookie'].map(c=>c.split(';')[0]).filter(x=>x.match(/^[A-z_0-9=]+$/)).join(';')
 		return request({
