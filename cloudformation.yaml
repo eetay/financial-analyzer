@@ -60,7 +60,7 @@ Resources:
               callback(null, "Hello World!");
           };
       Runtime: "nodejs8.10"
-      Timeout: 25
+      Timeout: 80
       TracingConfig:
         Mode: "Active"
       Environment:
