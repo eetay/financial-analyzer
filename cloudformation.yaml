@@ -39,7 +39,8 @@ Resources:
           Resource: '*'
         - Effect: Allow
           Action:
-            - dynamodb:PutItem",
+            - dynamodb:PutItem
+            - dynamodb:BatchWriteItem
           Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Stocks'
       Roles:
         - Ref: TaseGetInfoLambdaExecutionRole

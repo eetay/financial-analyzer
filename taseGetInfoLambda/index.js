@@ -1,5 +1,36 @@
 const zlib = require('zlib');
 const https = require('https');
+const AWS = require('aws-sdk');
+const dynamodb = new AWS.DynamoDB({apiVersion: '2012-08-10'});
+
+const csvStringToArray = (strData, header=true) =>
+{
+    //const objPattern = new RegExp(("(\\,|\\r?\\n|\\r|^)(?:\"([^\"]*(?:\"\"[^\"]*)*)\"|([^\\,\\r\\n]*))"),"gi");
+    const objPattern = new RegExp(("(\\,|\\r?\\n|\\r|^)(?:\"((?:\\\\.|\"\"|[^\\\\\"])*)\"|([^\\,\"\\r\\n]*))"),"gi");
+    let arrMatches = null, arrData = [[]];
+    while (arrMatches = objPattern.exec(strData)){
+        if (arrMatches[1].length && arrMatches[1] !== ",") arrData.push([]);
+        arrData[arrData.length - 1].push(arrMatches[2] ? 
+            arrMatches[2].replace(new RegExp( "[\\\\\"](.)", "g" ), '$1') :
+            arrMatches[3]);
+    }
+    if (header) {
+        let hData = arrData.shift();
+        let hashData = arrData.map(row => {
+            let i = 0;
+            return hData.reduce(
+                (acc, key) => { 
+                    acc[key] = row[i++]; 
+                    return acc; 
+                },
+                {}
+            );
+        });
+        return hashData;
+    } else {
+        return arrData;
+    }
+}
 
 function win1255ToUtf8(buf) {
 	const arr = [
@@ -109,7 +140,7 @@ function request(options) {
 
 exports.handler = async (event) => {
 	let result = await request({
-		path: '/_layouts/Tase/ManagementPages/Export.aspx?sn=none&GridId=33&AddCol=1&Lang=he-IL&CurGuid={26F9CCE6-D184-43C6-BAB9-CF7848987BFF}&action=1&dualTab=&SubAction=0&date=&ExportType=3'
+		path: '/_layouts/Tase/ManagementPages/Export.aspx?sn=none&GridId=33&AddCol=1&Lang=en-US&CurGuid={26F9CCE6-D184-43C6-BAB9-CF7848987BFF}&action=1&dualTab=&SubAction=0&date=&ExportType=3'
 	}).then(({data, headers})=>{
 		let cookies = headers['set-cookie'].map(c=>c.split(';')[0]).filter(x=>x.match(/^[A-z_0-9=]+$/)).join(';')
 		return request({
@@ -118,13 +149,44 @@ exports.handler = async (event) => {
 				Cookie: cookies
 			}
 		}) 
-	}).then(res=>{
-		//console.log('FINAL', res)
-		//callback(null, res.data/*.split('\r\n')*/)
+	}).then(({data})=>{
+		data = data.substr(data.indexOf('\n',data.indexOf('\n',data.indexOf('\n')+1)+1)+1)
+		let res = csvStringToArray(data, false)
+		let columns = res.shift()
+		let date = ''+Math.floor(Date.now()/86400000)
+		return Promise.all(res.map(quote=>{
+			let values = columns.map((v,index)=>({[v]:{S:quote[index]?quote[index]:'EMPTY'}}))
+			return new Promise( (resolve, reject) => dynamodb.putItem({
+				"TableName": process.env.STOCKS_TABLE,
+				"Item" : {
+					'Name': {
+						S: quote[0]
+					},
+					'Date': {
+						S: date,
+					},
+					'Data': {
+						M: Object.assign({},...values)
+					}
+       			}
+			}, (err, data) => {
+				resolve({err,data})
+			}) )
+		}))
+	}).then(dbResults => {
+		console.log('DBRES',dbResults)
 		return {
-        	statusCode: 200,
-        	body: res.data,
-    	}
+        		statusCode: 200,
+        		body: dbResults,
+    		}
+	}).catch(e=>{
+		return {
+        		statusCode: 200,
+        		body: e,
+    		}
 	})
 	return result
 }
+
+
+
