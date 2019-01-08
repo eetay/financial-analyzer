@@ -154,25 +154,31 @@ exports.handler = async (event) => {
 			}
 		}) 
 	}).then(({data})=>{
-		data = data.substr(data.indexOf('\n',data.indexOf('\n',data.indexOf('\n')+1)+1)+1)
+		let headerSize = data.indexOf('\n',data.indexOf('\n',data.indexOf('\n')+1)+1)+1
+		let humanDate = data.substr(0,headerSize).match(/([0-9][0-9]).([0-9][0-9]).(20[0-9][0-9])/)
+		let date = (new Date(`${humanDate[2]}/${humanDate[1]}/${humanDate[3]} GMT`).getTime()/86400000)+1
+		let dateNow = ''+Math.floor(Date.now()/86400000)
+		data = data.substr(headerSize)
 		let res = csvStringToArray(data, false)
-		let columns = res.shift()
-		let date = ''+Math.floor(Date.now()/86400000)
+		let columns = res.shift().map(v=>v.trim())
 		return Promise.all(res.map(quote=>{
 			let values = columns.map((v,index)=>({[v]:{S:quote[index]?quote[index]:'EMPTY'}}))
 			return new Promise( (resolve, reject) => dynamodb.putItem({
 				"TableName": process.env.STOCKS_TABLE,
-				"Item" : {
+				"Item" : Object.assign({
 					'Name': {
 						S: quote[0]
 					},
 					'Date': {
-						S: date,
+						S: ''+date
 					},
-					'Data': {
-						M: Object.assign({},...values)
+					'_Now': {
+						N: dateNow
+					},
+					'_HumanDate': {
+						S: humanDate[0]
 					}
-       			}
+				}, ...values)
 			}, (err, data) => {
 				resolve({err,data})
 			}) )
@@ -181,7 +187,7 @@ exports.handler = async (event) => {
 		console.log('DBRES',dbResults)
 		return {
         		statusCode: 200,
-        		body: dbResults,
+        		//body: dbResults,
     		}
 	}).catch(e=>{
 		return {
@@ -191,6 +197,8 @@ exports.handler = async (event) => {
 	})
 	return result
 }
+
+
 
 
 
