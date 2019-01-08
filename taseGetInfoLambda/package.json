@@ -1,0 +1,10 @@
+{
+  "name": "taseGetInfoLambda",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Eetay Natan",
+  "license": "MIT",
+  "dependencies": {
+    "pg": "^7.7.1"
+  }
+}

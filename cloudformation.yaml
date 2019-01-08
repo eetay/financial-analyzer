@@ -26,7 +26,7 @@ Resources:
   IamPolicyLambdaExecution:
     Type: AWS::IAM::Policy
     Properties:
-      PolicyName: IamPolicyLambdaExecution
+      PolicyName: !Sub '${AWS::StackName}-IamPolicyLambdaExecution'
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -48,7 +48,7 @@ Resources:
   TaseGetInfoLambda: 
     Type: "AWS::Lambda::Function"
     Properties: 
-      FunctionName: "TaseGetInfoLambda"
+      FunctionName: !Sub '${AWS::StackName}-TaseGetInfoLambda'
       Handler: "index.handler"
       Role: 
         Fn::GetAtt: 
@@ -66,6 +66,7 @@ Resources:
       Environment:
         Variables:
           STOCKS_TABLE: Stocks
+          POSTGRE_CONN: postgres://root:rootroot@eetaydb.cdwpbt9htoxm.us-east-2.rds.amazonaws.com/Stocks
   
   ScheduledRule: 
     Type: AWS::Events::Rule

@@ -3,6 +3,9 @@ const https = require('https');
 const AWS = require('aws-sdk');
 const dynamodb = new AWS.DynamoDB({apiVersion: '2012-08-10'});
 
+const pg = require('pg')
+const pgClient = new pg.Client(process.env.POSTGRE_CONN)
+
 const csvStringToArray = (strData, header=true) =>
 {
     //const objPattern = new RegExp(("(\\,|\\r?\\n|\\r|^)(?:\"([^\"]*(?:\"\"[^\"]*)*)\"|([^\\,\\r\\n]*))"),"gi");
@@ -108,7 +111,7 @@ function request(options) {
 				let buffer=[]
 				let x=0
 				var gunzip = zlib.createGunzip();
-	            res.pipe(gunzip);
+				res.pipe(gunzip);
 				gunzip.on('data', (chunk) => {
 					buffer.push(win1255ToUtf8(chunk));
 				}).on('end', () => {
@@ -118,8 +121,8 @@ function request(options) {
 						headers: res.headers 
 					})
 				}).on("error", function (e) {
-                	reject(e);
-            	});
+	 		              	reject(e);
+			  	});
 			}
 			else {
 				res.setEncoding('utf8');
@@ -137,6 +140,34 @@ function request(options) {
 	})	
 }
 
+function pgInsertPromise(res, columns, date, dateNow, humanDate) {
+	return pgClient.query('SELECT NOW() as now')
+}
+
+function dynamodbInsertPromise(res, columns, date, dateNow, humanDate) {
+	return Promise.all(res.map(quote=>{
+		let values = columns.map((v,index)=>({[v]:{S:quote[index]?quote[index]:'EMPTY'}}))
+		return new Promise( (resolve, reject) => dynamodb.putItem({
+			"TableName": process.env.STOCKS_TABLE,
+			"Item" : Object.assign({
+				'Name': {
+					S: quote[0]
+				},
+				'Date': {
+					S: ''+date
+				},
+				'_Now': {
+					N: dateNow
+				},
+				'_HumanDate': {
+					S: humanDate[0]
+				}
+			}, ...values)
+		}, (err, data) => {
+			resolve({err, data, quote})
+		}) )
+	}))
+}
 
 exports.handler = async (event) => {
 	let lang={
@@ -161,30 +192,11 @@ exports.handler = async (event) => {
 		data = data.substr(headerSize)
 		let res = csvStringToArray(data, false)
 		let columns = res.shift().map(v=>v.trim())
-		return Promise.all(res.map(quote=>{
-			let values = columns.map((v,index)=>({[v]:{S:quote[index]?quote[index]:'EMPTY'}}))
-			return new Promise( (resolve, reject) => dynamodb.putItem({
-				"TableName": process.env.STOCKS_TABLE,
-				"Item" : Object.assign({
-					'Name': {
-						S: quote[0]
-					},
-					'Date': {
-						S: ''+date
-					},
-					'_Now': {
-						N: dateNow
-					},
-					'_HumanDate': {
-						S: humanDate[0]
-					}
-				}, ...values)
-			}, (err, data) => {
-				resolve({err, data, quote})
-			}) )
-		}))
+		//return dynamodbInsertPromise(res, columns, date, dateNow, humanDate)
+		return pgInsertPromise(res, columns, date, dateNow, humanDate)
 	}).then(dbResults => {
-		let dbErrors=dbResults.filter(res=>(res.err != null))
+  		console.log(dbResults.rows[0]))
+		let dbErrors=dbResults.rows.filter(res=>(res.err != null))
 		console.log('DB ERRORS', dbErrors)
 		return {
         		statusCode: 200,
