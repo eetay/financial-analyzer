@@ -180,16 +180,18 @@ exports.handler = async (event) => {
 					}
 				}, ...values)
 			}, (err, data) => {
-				resolve({err,data})
+				resolve({err, data, quote})
 			}) )
 		}))
 	}).then(dbResults => {
-		console.log('DBRES',dbResults)
+		let dbErrors=dbResults.filter(res=>(res.err != null))
+		console.log('DB ERRORS', dbErrors)
 		return {
         		statusCode: 200,
-        		//body: dbResults,
+        		body: {dbErrors},
     		}
 	}).catch(e=>{
+		console.log('EXCEPTION', e)
 		return {
         		statusCode: 200,
         		body: e,

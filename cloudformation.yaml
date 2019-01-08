@@ -71,7 +71,7 @@ Resources:
     Type: AWS::Events::Rule
     Properties: 
       Description: "ScheduledRule"
-      ScheduleExpression: "cron(0 17 * * ? *)" # 19:00 Israel
+      ScheduleExpression: "cron(0 17 ? * SUN-THU *)" # 19:00 Isral work days
       State: "ENABLED"
       Targets: 
         - 
