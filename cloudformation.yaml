@@ -1,6 +1,12 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: "An example template with an IAM role for a Lambda state machine."
 
+
+Parameters:
+  Stage:
+    Type: String
+    Description: Prod, Dev, etc.
+
 #
 # CloudFormation resources
 #
@@ -39,6 +45,10 @@ Resources:
           Resource: '*'
         - Effect: Allow
           Action:
+            - 'rds:*'
+          Resource: !Sub 'arn:aws:rds:${AWS::Region}:*:*'
+        - Effect: Allow
+          Action:
             - dynamodb:PutItem
             - dynamodb:BatchWriteItem
           Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Stocks'
@@ -65,7 +75,7 @@ Resources:
         Mode: "Active"
       Environment:
         Variables:
-          STOCKS_TABLE: Stocks
+          STOCKS_TABLE: !Sub '${Stage}Stocks'
           POSTGRE_CONN: postgres://root:rootroot@eetaydb.cdwpbt9htoxm.us-east-2.rds.amazonaws.com/Stocks
   
   ScheduledRule: 

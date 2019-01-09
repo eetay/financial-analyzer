@@ -4,7 +4,8 @@ const AWS = require('aws-sdk');
 const dynamodb = new AWS.DynamoDB({apiVersion: '2012-08-10'});
 
 const pg = require('pg')
-const pgClient = new pg.Client(process.env.POSTGRE_CONN)
+
+const pgClient = new pg.Client({ connectionString: process.env.POSTGRE_CONN })
 
 const csvStringToArray = (strData, header=true) =>
 {
@@ -140,10 +141,6 @@ function request(options) {
 	})	
 }
 
-function pgInsertPromise(res, columns, date, dateNow, humanDate) {
-	return pgClient.query('SELECT NOW() as now')
-}
-
 function dynamodbInsertPromise(res, columns, date, dateNow, humanDate) {
 	return Promise.all(res.map(quote=>{
 		let values = columns.map((v,index)=>({[v]:{S:quote[index]?quote[index]:'EMPTY'}}))
@@ -167,6 +164,16 @@ function dynamodbInsertPromise(res, columns, date, dateNow, humanDate) {
 			resolve({err, data, quote})
 		}) )
 	}))
+}
+
+
+async function pgInsertPromise(res, columns, date, dateNow, humanDate) {
+	console.log(`##########POSTGRE_CONN=${process.env.POSTGRE_CONN}`)
+    var ret = await pgClient.connect()
+	console.log('QUERY', ret)
+	ret = pgClient.query('SELECT NOW() as now')//.then(e=>console.log('RET',e)).catch(e=>console.log('RET',e))
+	console.log('RET2', ret)
+	return ret
 }
 
 exports.handler = async (event) => {
@@ -195,7 +202,7 @@ exports.handler = async (event) => {
 		//return dynamodbInsertPromise(res, columns, date, dateNow, humanDate)
 		return pgInsertPromise(res, columns, date, dateNow, humanDate)
 	}).then(dbResults => {
-  		console.log(dbResults.rows[0]))
+  		console.log('DBRESULT', dbResults.rows[0])
 		let dbErrors=dbResults.rows.filter(res=>(res.err != null))
 		console.log('DB ERRORS', dbErrors)
 		return {
@@ -211,6 +218,8 @@ exports.handler = async (event) => {
 	})
 	return result
 }
+
+
 
 
 

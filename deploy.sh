@@ -2,13 +2,16 @@
 #if [ -z "$AWS_EXEC" ]; then source ./aws-exec.sh ""; fi
 ACTION=$1
 MYDIR=`dirname $0`
-STACK=FinancialAnalyzerStackPG
+STAGE=PG
+STACK=FinancialAnalyzerStack$STAGE
 
 case $ACTION in
   update|create)
     aws cloudformation ${ACTION}-stack --stack-name $STACK \
       --template-body file://./cloudformation.yaml \
-      --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM 
+      --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
+      --parameters \
+        ParameterKey=Stage,ParameterValue=$STAGE
     ./cloudformation-tail.sh $STACK $AWS_REGION $AWS_PROFILE
     ;;
   deploy)
