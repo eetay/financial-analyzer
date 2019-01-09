@@ -1,6 +1,12 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: "An example template with an IAM role for a Lambda state machine."
 
+
+Parameters:
+  Stage:
+    Type: String
+    Description: Prod, Dev, etc.
+
 #
 # CloudFormation resources
 #
@@ -26,7 +32,7 @@ Resources:
   IamPolicyLambdaExecution:
     Type: AWS::IAM::Policy
     Properties:
-      PolicyName: IamPolicyLambdaExecution
+      PolicyName: !Sub '${AWS::StackName}-IamPolicyLambdaExecution'
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -39,6 +45,10 @@ Resources:
           Resource: '*'
         - Effect: Allow
           Action:
+            - 'rds:*'
+          Resource: !Sub 'arn:aws:rds:${AWS::Region}:*:*'
+        - Effect: Allow
+          Action:
             - dynamodb:PutItem
             - dynamodb:BatchWriteItem
           Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Stocks'
@@ -48,7 +58,7 @@ Resources:
   TaseGetInfoLambda: 
     Type: "AWS::Lambda::Function"
     Properties: 
-      FunctionName: "TaseGetInfoLambda"
+      FunctionName: !Sub '${AWS::StackName}-TaseGetInfoLambda'
       Handler: "index.handler"
       Role: 
         Fn::GetAtt: 
@@ -65,12 +75,13 @@ Resources:
         Mode: "Active"
       Environment:
         Variables:
-          STOCKS_TABLE: Stocks
+          STOCKS_TABLE: !Sub '${Stage}Stocks'
+          POSTGRE_CONN: postgres://root:rootroot@eetaydb.cdwpbt9htoxm.us-east-2.rds.amazonaws.com/Stocks
   
   ScheduledRule: 
     Type: AWS::Events::Rule
     Properties: 
-      Description: "ScheduledRule"
+      Description: !Sub "ScheduleRule for ${AWS::Stack}-TaseGetInfoLambda"
       ScheduleExpression: "cron(0 17 ? * SUN-THU *)" # 19:00 Isral work days
       State: "ENABLED"
       Targets: 
