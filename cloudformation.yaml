@@ -81,7 +81,7 @@ Resources:
   ScheduledRule: 
     Type: AWS::Events::Rule
     Properties: 
-      Description: !Sub "ScheduleRule for ${AWS::Stack}-TaseGetInfoLambda"
+      Description: !Sub "ScheduleRule for ${AWS::StackName}-TaseGetInfoLambda"
       ScheduleExpression: "cron(0 17 ? * SUN-THU *)" # 19:00 Isral work days
       State: "ENABLED"
       Targets: 
