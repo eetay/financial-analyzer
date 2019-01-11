@@ -54,6 +54,11 @@ Resources:
           Resource: '*' #!GetAtt StocksDeliveryStream.Arn
         - Effect: Allow
           Action:
+            - s3:PutObject
+          Resource: arn:aws:s3:::eetay-stocks/*
+      Roles:
+        - Effect: Allow
+          Action:
             - dynamodb:PutItem
             - dynamodb:BatchWriteItem
           Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Stocks'
@@ -80,8 +85,8 @@ Resources:
         Mode: "Active"
       Environment:
         Variables:
+          STOCKS_BUCKET: eetay-stocks
           STOCKS_TABLE: !Sub '${Stage}Stocks'
-          STOCKS_BUCKET: arn:aws:s3:::eetay-stocks
           STOCKS_DELIVERY_STREAM_NAME: !Ref StocksDeliveryStream
           POSTGRE_CONN: postgres://root:rootroot@eetaydb.cdwpbt9htoxm.us-east-2.rds.amazonaws.com/Stocks
   

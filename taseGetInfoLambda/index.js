@@ -139,12 +139,14 @@ function request(options) {
 
 function s3InsertPromise(res, columns, date, dateNow, humanDate) {
 	var s3 = new AWS.S3();
-	return s3.putObject({
-		Bucket: process.env.STOCKS_BUCKET,
-		Key: date.replace('/','_'),
-		Body: JSON.stringify(res),
-		ContentType: 'application/json'
-	}).promise();
+	return Promise.all([
+		s3.putObject({
+			Bucket: process.env.STOCKS_BUCKET,
+			Key: `${process.env.STOCKS_TABLE}/tase_${date}`,
+			Body: res,
+			ContentType: 'application/csv'
+		}).promise()
+	])
 }
 
 function firehoseInsertPromise(res, columns, date, dateNow, humanDate) {
@@ -181,7 +183,7 @@ exports.handler = async (event) => {
 		data = data.substr(headerSize)
 		let res = csvStringToArray(data, false)
 		let columns = res.shift().map(v=>v.trim())
-		return firehoseInsertPromise(data, columns, date, dateNow, humanDate)
+		return s3InsertPromise(data, columns, date, dateNow, humanDate)
 		return Promise.all(res.map(quote=>{
 			let values = columns.map((v,index)=>({[v]:{S:quote[index]?quote[index]:'EMPTY'}}))
 			return new Promise( (resolve, reject) => dynamodb.putItem({
