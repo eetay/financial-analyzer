@@ -45,8 +45,13 @@ Resources:
           Resource: '*'
         - Effect: Allow
           Action:
-            - 'rds:*'
-          Resource: !Sub 'arn:aws:rds:${AWS::Region}:*:*'
+            - firehose:*
+            - firehose:DeleteDeliveryStream
+            - firehose:PutRecord
+            - firehose:PutRecordBatch
+            - firehose:UpdateDestination
+            - firehose:CreateDeliveryStream
+          Resource: '*' #!GetAtt StocksDeliveryStream.Arn
         - Effect: Allow
           Action:
             - dynamodb:PutItem
@@ -76,6 +81,8 @@ Resources:
       Environment:
         Variables:
           STOCKS_TABLE: !Sub '${Stage}Stocks'
+          STOCKS_BUCKET: arn:aws:s3:::eetay-stocks
+          STOCKS_DELIVERY_STREAM_NAME: !Ref StocksDeliveryStream
           POSTGRE_CONN: postgres://root:rootroot@eetaydb.cdwpbt9htoxm.us-east-2.rds.amazonaws.com/Stocks
   
   ScheduledRule: 
@@ -104,5 +111,59 @@ Resources:
           - "ScheduledRule"
           - "Arn"
 
+  #
+  # Firehose StocksDelivery
+  #
+  StocksDeliveryStream:
+    DependsOn:
+      - StocksDeliveryPolicy
+    Type: AWS::KinesisFirehose::DeliveryStream
+    Properties:
+      DeliveryStreamName: !Sub '${AWS::StackName}-StocksDeliveryStream'
+      ExtendedS3DestinationConfiguration:
+        BucketARN: arn:aws:s3:::eetay-stocks
+        BufferingHints:
+          IntervalInSeconds: '60'
+          SizeInMBs: '1'
+        CompressionFormat: UNCOMPRESSED
+        Prefix: stocks-delivery-stream/
+        RoleARN: !GetAtt StocksDeliveryRole.Arn
+        ProcessingConfiguration:
+          Enabled: 'false'
 
+  StocksDeliveryRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Service: firehose.amazonaws.com
+            Action: 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                'sts:ExternalId': !Ref 'AWS::AccountId'
+
+  StocksDeliveryPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub '${AWS::StackName}-IamPolicyStocksDelivery'
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - 's3:AbortMultipartUpload'
+              - 's3:GetBucketLocation'
+              - 's3:GetObject'
+              - 's3:ListBucket'
+              - 's3:ListBucketMultipartUploads'
+              - 's3:PutObject'
+            Resource:
+              - arn:aws:s3:::eetay-stocks
+              - arn:aws:s3:::eetay-stocks*
+      Roles:
+        - !Ref StocksDeliveryRole
 
