@@ -86,7 +86,11 @@ Resources:
       Environment:
         Variables:
           STOCKS_BUCKET: eetay-stocks
-          STOCKS_TABLE: !Sub '${Stage}Stocks'
+          STOCKS_TABLE:
+            Fn::Sub:
+            - '${Stage}Stocks'
+            - Stage: !Ref Stage
+          STAGE: !Ref Stage
           STOCKS_DELIVERY_STREAM_NAME: !Ref StocksDeliveryStream
           POSTGRE_CONN: postgres://root:rootroot@eetaydb.cdwpbt9htoxm.us-east-2.rds.amazonaws.com/Stocks
   

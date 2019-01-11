@@ -137,6 +137,25 @@ function request(options) {
 	})	
 }
 
+function logExecution(errorInfo) {
+	const errorObject=`tase_error_${Date.now()}`
+	console.log(`LOGGING ERROR to ${errorObject}`)
+	var s3 = new AWS.S3();
+	return new Promise((resolve, reject)=>{ 
+		s3.putObject({
+			Bucket: process.env.STOCKS_BUCKET,
+			Key: errorObject,
+			Body: JSON.stringify(errorInfo),
+			ContentType: 'application/json'
+		}, whatever => {
+			resolve({
+	        	statusCode: 200,
+	        	body: errorInfo[errorInfo.length-1],
+	    	})
+		})
+	})
+}
+
 function s3InsertPromise(res, columns, date, dateNow, humanDate) {
 	var s3 = new AWS.S3();
 	return Promise.all([
@@ -161,6 +180,7 @@ function firehoseInsertPromise(res, columns, date, dateNow, humanDate) {
     ])
 }
 exports.handler = async (event) => {
+	let errorInfo=[]
 	let lang={
 		english: '{85603D39-703A-4619-97D9-CE9F16E27615}',
 		hebrew: '{26F9CCE6-D184-43C6-BAB9-CF7848987BFF}'
@@ -168,6 +188,7 @@ exports.handler = async (event) => {
 	let result = await request({
 		path: `/_layouts/Tase/ManagementPages/Export.aspx?sn=none&GridId=33&AddCol=1&Lang=en-US&CurGuid=${lang['english']}&action=1&dualTab=&SubAction=0&date=&ExportType=3`
 	}).then(({data, headers})=>{
+		errorInfo.push({data, headers})
 		let cookies = headers['set-cookie'].map(c=>c.split(';')[0]).filter(x=>x.match(/^[A-z_0-9=]+$/)).join(';')
 		return request({
 			path: headers['location'],
@@ -176,6 +197,7 @@ exports.handler = async (event) => {
 			}
 		}) 
 	}).then(({data})=>{
+		errorInfo.push(data)
 		let headerSize = data.indexOf('\n',data.indexOf('\n',data.indexOf('\n')+1)+1)+1
 		let humanDate = data.substr(0,headerSize).match(/([0-9][0-9]).([0-9][0-9]).(20[0-9][0-9])/)
 		let date = (new Date(`${humanDate[2]}/${humanDate[1]}/${humanDate[3]} GMT`).getTime()/86400000)+1
@@ -207,21 +229,21 @@ exports.handler = async (event) => {
 			}) )
 		}))
 	}).then(dbResults => {
+		errorInfo.push(dbResults);
 		let dbErrors=dbResults.filter(res=>(res.err != null))
 		console.log('DB ERRORS', dbErrors)
 		return {
-        		statusCode: 200,
-        		body: {dbErrors},
-    		}
+        	statusCode: 200,
+        	body: {dbErrors},
+    	}
 	}).catch(e=>{
 		console.log('EXCEPTION', e)
-		return {
-        		statusCode: 200,
-        		body: e,
-    		}
+		errorInfo.push(e.stack.split('\n'))
+		return logExecution(errorInfo)
 	})
 	return result
 }
+
 
 
 
