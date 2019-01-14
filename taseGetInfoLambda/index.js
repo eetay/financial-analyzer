@@ -161,7 +161,7 @@ function s3InsertPromise(res, columns, date, dateNow, humanDate) {
 	return Promise.all([
 		s3.putObject({
 			Bucket: process.env.STOCKS_BUCKET,
-			Key: `${process.env.STOCKS_TABLE}/tase_${date}`,
+			Key: `${process.env.STOCKS_TABLE}/tase_${date}.csv`,
 			Body: res,
 			ContentType: 'application/csv'
 		}).promise()

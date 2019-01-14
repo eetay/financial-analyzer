@@ -2,7 +2,7 @@
 #if [ -z "$AWS_EXEC" ]; then source ./aws-exec.sh ""; fi
 ACTION=$1
 MYDIR=`dirname $0`
-STAGE=S3
+STAGE=
 STACK=FinancialAnalyzerStack$STAGE
 
 case $ACTION in
